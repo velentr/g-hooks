@@ -1,0 +1,106 @@
+#+title: g-hooks
+#+author: Brian Kubisiak
+
+Manage git hooks using guix.
+
+* SYNOPSIS
+#+BEGIN_SRC
+  $ cat g-hooks.scm
+  (use-modules (gnu packages license)
+               (guix gexp)
+               (g-hooks core))
+
+  (define reuse-lint
+    #~(execl #$(file-append reuse "/bin/reuse") "reuse" "lint"))
+
+  (g-hooks
+    (pre-commit reuse-lint))
+  $ g-hooks reconfigure
+  ...
+  $ git commit
+  # SUMMARY
+
+  * Bad licenses:
+  * Deprecated licenses:
+  * Licenses without file extension:
+  * Missing licenses:
+  * Unused licenses:
+  * Used licenses: CC-BY-SA-4.0, GPL-3.0-only
+  * Read errors: 0
+  * Files with copyright information: 4 / 4
+  * Files with license information: 4 / 4
+
+  Congratulations! Your project is compliant with version 3.0 of the REUSE Specification :-)
+  ...
+  $ g-hooks list-generations
+  Generation 1	Sep 02 2023 14:31:46	(current)
+    file name: /home/$USER/src/g-hooks/.git/g-hooks/g-hooks-1-link
+    canonical file name: /gnu/store/3j8knz3xm6y9axjk7vincj8q3g2ah36x-g-hooks
+    channels:
+      guix:
+        repository url: https://git.savannah.gnu.org/git/guix.git
+        branch: master
+        commit: 4dfdd822102690b5687acf28365ab707b68d9476
+#+END_SRC
+
+* DESCRIPTION
+~g-hooks~ allows you to describe git hooks using guix's g-expressions, then
+build and install them as a private profile under ~.git/g-hooks~. This gives
+you:
+
+- Dependencies are built, installed, and managed by guix
+- Hooks are reproducible and fully specify all dependencies (no more "works on
+  my machine")
+- Upgrades are transactional: easily rollback to previous generations as
+  needed
+
+To configure, add ~g-hooks.scm~ to the top-level of your git repository. This
+file should evaluate to an association list mapping git hook names to
+g-expressions describing the script to run. Usually, this should be done using
+the ~g-hooks~ macro:
+#+BEGIN_SRC scheme
+  (g-hooks
+    (pre-commit #~(...))
+    (commit-msg #~(...)))
+#+END_SRC
+
+Then run ~g-hooks reconfigure~ to install the hooks. You can use ~g-hooks
+list-generations~ to show all existing generations and ~g-hooks
+delete-generations~ to delete old generations that are no longer needed.
+
+* QUESTIONS
+
+#+BEGIN_QUOTE
+Why would you want to do this?
+#+END_QUOTE
+
+One of the most powerful aspects of guix is the ability to create reproducible
+development environments. ~g-hooks~ extends the environment to include git
+hooks as well.
+
+#+BEGIN_QUOTE
+What about [[https://pre-commit.com/][pre-commit]]?
+#+END_QUOTE
+
+While ~pre-commit~ has a similar goal, ~g-hooks~ is built on top of guix to
+leverage an existing large package repository, make these hooks more
+reproducible, and (in the future) easily containerize hooks when they run.
+
+Currently ~pre-commit~ is more mature and has an larger library of existing
+hooks, but I hope to change that soon.
+
+* SEE ALSO
+
+The [[https://guix.gnu.org/manual/en/html_node/][guix manual]] is your best resource for understanding how this all ties
+together. Specifically the section on [[https://guix.gnu.org/manual/en/html_node/G_002dExpressions.html][g-expressions]] is important for writing
+~g-hooks~.
+
+[[https://git-scm.com/docs/githooks][Git hooks documentation]] is important for understanding which hooks exist and
+how they are called.
+
+[[https://pre-commit.com/][pre-commit]] is a similar tool that is (currently) more mature and has an
+existing ecosystem.
+
+At a much higher level, [[https://edolstra.github.io/pubs/phd-thesis.pdf][Eelco Dolstra's PhD thesis]] is good background for
+understanding the underlying abstraction that guix (and thus ~g-hooks~) builds
+on.
