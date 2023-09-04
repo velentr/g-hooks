@@ -285,6 +285,18 @@ directory."
     (error "unrecognized arguments:" (string-join args)))
   (for-each print-generation (profile-generations (force %g-hooks-profile))))
 
+(define (switch-generation args)
+  "Switch the g-hooks profile to the generation specified in ARGS."
+  (unless (= (length args) 2)
+    (error "switch-generation takes exactly one argument"))
+  (let* ((generation-spec (cadr args))
+         (number (relative-generation-spec->number
+                  (force %g-hooks-profile)
+                  generation-spec)))
+    (if number
+        (switch-to-generation* (force %g-hooks-profile) number)
+        (error "cannot switch to generation:" generation-spec))))
+
 (define %main-options
   '((version (single-char #\v) (value #f))
     (help    (single-char #\h) (value #f))))
@@ -302,13 +314,15 @@ the valid values for COMMAND are listed below:
 
   reconfigure         switch to a new g-hooks configuration
   list-generations    list all available g-hooks generations
+  switch-generation   switch to an existing g-hooks generation
   delete-generations  delete old g-hooks generations
 ")
 
 (define %main-commands
   `(("reconfigure" . ,reconfigure)
     ("list-generations" . ,list-generations)
-    ("delete-generations" . ,delete-generations)))
+    ("delete-generations" . ,delete-generations)
+    ("switch-generation" . ,switch-generation)))
 
 (define (main)
   (let ((options (getopt-long
