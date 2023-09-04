@@ -7,11 +7,11 @@ Manage git hooks using guix.
 #+BEGIN_SRC
   $ cat g-hooks.scm
   (use-modules (gnu packages license)
-               (guix gexp)
-               (g-hooks core))
+               (g-hooks core)
+               (g-hooks utils))
 
   (define reuse-lint
-    #~(execl #$(file-append reuse "/bin/reuse") "reuse" "lint"))
+    (program reuse "/bin/reuse" "lint"))
 
   (g-hooks
     (pre-commit reuse-lint))
