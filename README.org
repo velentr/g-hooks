@@ -1,7 +1,8 @@
-#+title: g-hooks
-#+author: Brian Kubisiak
+# SPDX-FileCopyrightText: 2023 Brian Kubisiak <brian@kubisiak.com>
+# SPDX-License-Identifier: CC-BY-SA-4.0
 
-Manage git hooks using guix.
+* NAME
+g-hooks: Manage git hooks using guix
 
 * SYNOPSIS
 #+BEGIN_SRC
