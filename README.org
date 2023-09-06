@@ -64,9 +64,10 @@ the ~g-hooks~ macro:
     (commit-msg #~(...)))
 #+END_SRC
 
-Then run ~g-hooks reconfigure~ to install the hooks. You can use ~g-hooks
-list-generations~ to show all existing generations and ~g-hooks
-delete-generations~ to delete old generations that are no longer needed.
+Then run ~g-hooks reconfigure~ to install the hooks. You can use
+~g-hooks list-generations~ to show all existing generations and
+~g-hooks delete-generations~ to delete old generations that are no
+longer needed.
 
 * QUESTIONS
 
