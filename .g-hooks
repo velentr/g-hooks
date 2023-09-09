@@ -1,0 +1,10 @@
+;;; SPDX-FileCopyrightText: 2023 Brian Kubisiak <brian@kubisiak.com>
+;;;
+;;; SPDX-License-Identifier: CC0-1.0
+
+(use-modules (g-hooks core)
+             (g-hooks library))
+
+(g-hooks
+ (commit-msg gitlint/commit-msg)
+ (pre-commit reuse-lint/pre-commit))
