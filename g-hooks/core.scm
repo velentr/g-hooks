@@ -97,13 +97,22 @@ list of lines. If the program exits abnormally, the result is #f."
              (error "not a git directory")))))
 
 (define (load-config)
-  "Load the g-hooks configuration for this repository."
+  "Load the g-hooks configuration for this repository. The configuration file is
+named either g-hooks.scm or .g-hooks in the top-level directory of the git
+repository."
   (let ((top-level
          (car
           (or
            (call %git "rev-parse" "--path-format=absolute" "--show-toplevel")
            (error "not a git directory")))))
-    (primitive-load (string-append top-level "/g-hooks.scm"))))
+    (define (maybe-load-config config-file)
+      (let ((config-path (string-append top-level "/" config-file)))
+        (if (file-exists? config-path)
+            (primitive-load config-path)
+            #f)))
+    (or (maybe-load-config "g-hooks.scm")
+        (maybe-load-config ".g-hooks")
+        (error "configuration file not found"))))
 
 (define %global-id
   (delay (path-identifier (force %git-common-dir))))
