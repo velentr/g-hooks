@@ -3,8 +3,13 @@
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
 (define-module (g-hooks utils)
+  #:use-module (gnu packages python)
   #:use-module (guix gexp)
-  #:export (program))
+  #:use-module (guix packages)
+  #:use-module (guix sets)
+  #:use-module (guix utils)
+  #:export (program
+            python-script))
 
 ;;; Commentary:
 ;;;
@@ -25,3 +30,40 @@ success so it may be composed with other hooks."
                (system* #$(file-append package path) args ...))))
       (unless (= rc 0)
         (exit rc))))
+
+(define (unique lst)
+  "Return a list of all the unique elements of LST, compared using EQUAL?. The
+ordering of the elements in the returned list may be different than in LST."
+  (set->list (list->set lst)))
+
+(define (propagated-inputs-closure packages)
+  "Get the list of the transitive closure of all propagated inputs of the list of
+PACKAGES."
+  (unique
+   (apply append
+          (map
+           (lambda (package)
+             (cons
+              package
+              (map cadr
+                   (package-transitive-propagated-inputs package))))
+           packages))))
+
+(define-syntax-rule (python-script path modules)
+  "Run the python script at PATH with the given python MODULES in the library
+path. Command-line arguments are forwarded directly to the python script when it
+is run."
+  (with-imported-modules '((guix build utils))
+    #~(begin
+        (use-modules (guix build utils))
+        (set-path-environment-variable
+         "GUIX_PYTHONPATH"
+         (list #$(string-append "lib/python"
+                                (version-major+minor (package-version python))
+                                "/site-packages"))
+         (quote #$(propagated-inputs-closure modules)))
+        (apply
+         invoke
+         (cons* #$(file-append python "/bin/python3")
+                #$(local-file path)
+                (command-line))))))
