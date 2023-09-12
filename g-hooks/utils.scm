@@ -10,7 +10,8 @@
   #:use-module (guix utils)
   #:export (program
             program*
-            python-script))
+            python-script
+            python-script*))
 
 ;;; Commentary:
 ;;;
@@ -63,10 +64,10 @@ PACKAGES."
                    (package-transitive-propagated-inputs package))))
            packages))))
 
-(define-syntax-rule (python-script path modules args ...)
-  "Run the python script at PATH with the given python MODULES in the library
-path and the given ARGS. Command-line arguments are not forwarded to the python
-script when it is run."
+(define-syntax-rule (python-script-impl modules args)
+  "Set GUIX_PYTHONPATH to point at the transitive closure of the python MODULES,
+then run ARGS. This is the internal implementation of the python-script and
+python-script* macros."
   (with-imported-modules '((guix build utils))
     #~(begin
         (use-modules (guix build utils))
@@ -76,6 +77,23 @@ script when it is run."
                                 (version-major+minor (package-version python))
                                 "/site-packages"))
          (quote #$(propagated-inputs-closure modules)))
-        #$(run (list #$(file-append python "/bin/python3")
-                     #$(local-file path)
-                     args ...)))))
+        #$(run args))))
+
+(define-syntax-rule (python-script path modules args ...)
+  "Run the python script at PATH with the given python MODULES in the library
+path and the given ARGS. Command-line arguments are not forwarded to the python
+script when it is run."
+  (python-script-impl modules
+                      (list #$(file-append python "/bin/python3")
+                            #$(local-file path)
+                            args ...)))
+
+(define-syntax-rule (python-script* path modules args ...)
+  "Run the python script at PATH with the given python MODULES in the library
+path and the given ARGS. Command-line arguments are appended to ARGS when the
+python script is run."
+  (python-script-impl modules
+                      (cons* #$(file-append python "/bin/python3")
+                             #$(local-file path)
+                             args ...
+                             (cdr (command-line)))))
