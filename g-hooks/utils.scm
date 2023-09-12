@@ -22,14 +22,19 @@
 ;;;
 ;;; Code:
 
+(define-syntax-rule (run args)
+  "Return a gexp that runs ARGS using SYSTEM* and exit if it fails. Since this
+is a macro, any of ARGS may be an ungexp expression to escape the resulting
+gexp."
+  #~(let ((rc (status:exit-val (apply system* args))))
+      (unless (= rc 0)
+        (exit rc))))
+
 (define-syntax-rule (program package path args ...)
   "Run a program from PACKAGE, where the program is at PATH relative to the
 package root, with the given ARGS. This hook will exit on failure but not on
 success so it may be composed with other hooks."
-  #~(let ((rc (status:exit-val
-               (system* #$(file-append package path) args ...))))
-      (unless (= rc 0)
-        (exit rc))))
+  (run (list #$(file-append package path) args ...)))
 
 (define (unique lst)
   "Return a list of all the unique elements of LST, compared using EQUAL?. The
@@ -62,8 +67,6 @@ is run."
                                 (version-major+minor (package-version python))
                                 "/site-packages"))
          (quote #$(propagated-inputs-closure modules)))
-        (apply
-         invoke
-         (cons* #$(file-append python "/bin/python3")
-                #$(local-file path)
-                (command-line))))))
+        #$(run (cons* #$(file-append python "/bin/python3")
+                      #$(local-file path)
+                      (command-line))))))
