@@ -63,10 +63,10 @@ PACKAGES."
                    (package-transitive-propagated-inputs package))))
            packages))))
 
-(define-syntax-rule (python-script path modules)
+(define-syntax-rule (python-script path modules args ...)
   "Run the python script at PATH with the given python MODULES in the library
-path. Command-line arguments are forwarded directly to the python script when it
-is run."
+path and the given ARGS. Command-line arguments are not forwarded to the python
+script when it is run."
   (with-imported-modules '((guix build utils))
     #~(begin
         (use-modules (guix build utils))
@@ -76,6 +76,6 @@ is run."
                                 (version-major+minor (package-version python))
                                 "/site-packages"))
          (quote #$(propagated-inputs-closure modules)))
-        #$(run (cons* #$(file-append python "/bin/python3")
-                      #$(local-file path)
-                      (command-line))))))
+        #$(run (list #$(file-append python "/bin/python3")
+                     #$(local-file path)
+                     args ...)))))
