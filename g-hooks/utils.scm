@@ -9,6 +9,7 @@
   #:use-module (guix sets)
   #:use-module (guix utils)
   #:export (program
+            program*
             python-script))
 
 ;;; Commentary:
@@ -35,6 +36,14 @@ gexp."
 package root, with the given ARGS. This hook will exit on failure but not on
 success so it may be composed with other hooks."
   (run (list #$(file-append package path) args ...)))
+
+(define-syntax-rule (program* package path args ...)
+  "Run a program from PACKAGE, where the program is at PATH relative to the
+package root, with the given ARGS, appending COMMAND-LINE to the args. This hook
+will exit on failure but not on success so it may be composed with other hooks."
+  (run (cons* #$(file-append package path)
+              args ...
+              (cdr (command-line)))))
 
 (define (unique lst)
   "Return a list of all the unique elements of LST, compared using EQUAL?. The
