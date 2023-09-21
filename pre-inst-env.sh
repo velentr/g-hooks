@@ -6,7 +6,9 @@
 
 top_srcdir=$(dirname "$0")
 
-GUILE_LOAD_PATH="$top_srcdir:$GUILE_LOAD_PATH"
+current_guix="$HOME/.config/guix/current/share/guile/site/3.0"
+
+GUILE_LOAD_PATH="$top_srcdir:$current_guix:$GUILE_LOAD_PATH"
 export GUILE_LOAD_PATH
 
 PATH="$top_srcdir/scripts:$PATH"
