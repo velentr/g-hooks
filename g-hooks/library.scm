@@ -7,7 +7,11 @@
   #:use-module (gnu packages version-control)
   #:use-module (guix gexp)
   #:use-module (g-hooks utils)
-  #:export (gitlint/commit-msg
+  #:export (git-lfs/post-checkout
+            git-lfs/post-commit
+            git-lfs/post-merge
+            git-lfs/pre-push
+            gitlint/commit-msg
             reuse-lint/pre-commit))
 
 ;;; Commentary:
@@ -19,6 +23,21 @@
 ;;; g-hooks are only used for specific git hooks.
 ;;;
 ;;; Code:
+
+(define (make-git-lfs hook)
+  (program* git-lfs "/bin/git-lfs" #$hook))
+
+(define git-lfs/post-checkout
+  (make-git-lfs "post-checkout"))
+
+(define git-lfs/post-commit
+  (make-git-lfs "post-commit"))
+
+(define git-lfs/post-merge
+  (make-git-lfs "post-merge"))
+
+(define git-lfs/pre-push
+  (make-git-lfs "pre-push"))
 
 (define gitlint/commit-msg
   #~(with-input-from-file "/dev/tty"
