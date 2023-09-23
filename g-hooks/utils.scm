@@ -8,7 +8,8 @@
   #:use-module (guix packages)
   #:use-module (guix sets)
   #:use-module (guix utils)
-  #:export (program
+  #:export (hooks
+            program
             program*
             python-script
             python-script*))
@@ -23,6 +24,10 @@
 ;;; g-expressions manually.
 ;;;
 ;;; Code:
+
+(define-syntax-rule (hooks hook ...)
+  "Combine all HOOK ... into a single hook that runs each in sequence."
+  #~(begin #$hook ...))
 
 (define-syntax-rule (run args)
   "Return a gexp that runs ARGS using SYSTEM* and exit if it fails. Since this
