@@ -3,12 +3,15 @@
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
 (define-module (g-hooks utils)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages python)
   #:use-module (guix gexp)
   #:use-module (guix packages)
   #:use-module (guix sets)
   #:use-module (guix utils)
   #:export (hooks
+            bash-script
+            bash-script*
             program
             program*
             python-script
@@ -102,3 +105,34 @@ python script is run."
                              #$(local-file path)
                              args ...
                              (cdr (command-line)))))
+
+(define-syntax-rule (bash-script-impl inputs args)
+  "Set PATH to point at the transitive closure of the bin directories of INPUTS,
+then run ARGS. This is the internal implementation of the bash-script and
+bash-script* macros."
+  (with-imported-modules '((guix build utils))
+    #~(begin
+        (use-modules (guix build utils))
+        (set-path-environment-variable
+         "PATH"
+         '("bin")
+         (quote #$(propagated-inputs-closure inputs)))
+        #$(run args))))
+
+(define-syntax-rule (bash-script path inputs args ...)
+  "Run the bash script at PATH with the given INPUTS in the path and the given
+ARGS. Command-line arguments are not forwarded to the bash script when it is
+run."
+  (bash-script-impl inputs
+                    (list #$(file-append bash-minimal "/bin/bash")
+                          #$(local-file path)
+                          args ...)))
+
+(define-syntax-rule (bash-script* path inputs args ...)
+  "Run the bash script at PATH with the given INPUTS in the path and the given
+ARGS. Command-line arguments are appended to ARGS when it is run."
+  (bash-script-impl inputs
+                    (cons* #$(file-append bash-minimal "/bin/bash")
+                           #$(local-file path)
+                          args ...
+                          (cdr (command-line)))))
