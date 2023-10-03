@@ -40,17 +40,25 @@ gexp."
       (unless (= rc 0)
         (exit rc))))
 
+(define-syntax program-path
+  (syntax-rules ()
+    ((program-path (package output) path)
+     ;; TODO: is it possible to set the output using file-append?
+     #~(string-append (ungexp package output) path))
+    ((program-path package path)
+     (file-append package path))))
+
 (define-syntax-rule (program package path args ...)
   "Run a program from PACKAGE, where the program is at PATH relative to the
 package root, with the given ARGS. This hook will exit on failure but not on
 success so it may be composed with other hooks."
-  (run (list #$(file-append package path) args ...)))
+  (run (list #$(program-path package path) args ...)))
 
 (define-syntax-rule (program* package path args ...)
   "Run a program from PACKAGE, where the program is at PATH relative to the
 package root, with the given ARGS, appending COMMAND-LINE to the args. This hook
 will exit on failure but not on success so it may be composed with other hooks."
-  (run (cons* #$(file-append package path)
+  (run (cons* (program-path package path)
               args ...
               (cdr (command-line)))))
 
