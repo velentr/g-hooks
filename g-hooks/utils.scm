@@ -12,6 +12,7 @@
   #:export (hooks
             bash-script
             bash-script*
+            for-each-staged-file
             program
             program*
             python-script
@@ -144,3 +145,18 @@ ARGS. Command-line arguments are appended to ARGS when it is run."
                            #$(local-file path)
                           args ...
                           (cdr (command-line)))))
+
+(define-syntax-rule (for-each-staged-file (filename) body ...)
+  "For each staged file in the current repository, bind the file name to
+FILENAME and execute BODY ... (which should be g-expressions)."
+  #~(begin
+      (use-modules (ice-9 popen)
+                   (ice-9 rdelim))
+      (call-with-port
+          (open-pipe* OPEN_READ
+                      #$(file-append git-minimal "/bin/git")
+                      "diff" "--staged" "--name-only")
+        (lambda (port)
+          (do ((filename (read-line port) (read-line port)))
+              ((eof-object? filename))
+            #$body ...)))))
