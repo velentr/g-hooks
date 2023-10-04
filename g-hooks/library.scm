@@ -4,6 +4,7 @@
 
 (define-module (g-hooks library)
   #:use-module (gnu packages license)
+  #:use-module (gnu packages rust)
   #:use-module (gnu packages version-control)
   #:use-module (guix gexp)
   #:use-module (g-hooks utils)
@@ -12,7 +13,8 @@
             git-lfs/post-merge
             git-lfs/pre-push
             gitlint/commit-msg
-            reuse-lint/pre-commit))
+            reuse-lint/pre-commit
+            rustfmt/pre-commit))
 
 ;;; Commentary:
 ;;;
@@ -51,3 +53,11 @@
 
 (define reuse-lint/pre-commit
   (program reuse "/bin/reuse" "lint"))
+
+(define rustfmt/pre-commit
+  (for-each-staged-file
+   (file-name)
+   #~(let ((ext-idx (string-rindex file-name #\.)))
+       (if (and ext-idx
+                (equal? (substring file-name ext-idx) ".rs"))
+           #$(program (rust "rustfmt") "/bin/rustfmt" "--check" file-name)))))
