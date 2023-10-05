@@ -4,11 +4,13 @@
 
 (define-module (g-hooks library)
   #:use-module (gnu packages license)
+  #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages rust)
   #:use-module (gnu packages version-control)
   #:use-module (guix gexp)
   #:use-module (g-hooks utils)
-  #:export (git-lfs/post-checkout
+  #:export (black/pre-commit
+            git-lfs/post-checkout
             git-lfs/post-commit
             git-lfs/post-merge
             git-lfs/pre-push
@@ -25,6 +27,21 @@
 ;;; g-hooks are only used for specific git hooks.
 ;;;
 ;;; Code:
+
+(define black/pre-commit
+  (for-each-staged-file
+   (file-name)
+   #~(let ((ext-idx (string-rindex file-name #\.)))
+       (if (and ext-idx
+                (equal? (substring file-name ext-idx) ".py"))
+           #$(program python-black
+                      "/bin/black"
+                      "--check"
+                      "--color"
+                      "--diff"
+                      "--fast"
+                      "--quiet"
+                      file-name)))))
 
 (define (make-git-lfs hook)
   (program* git-lfs "/bin/git-lfs" #$hook))
