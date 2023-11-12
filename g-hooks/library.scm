@@ -77,4 +77,4 @@
    #~(let ((ext-idx (string-rindex file-name #\.)))
        (if (and ext-idx
                 (equal? (substring file-name ext-idx) ".rs"))
-           #$(program (rust "rustfmt") "/bin/rustfmt" "--check" file-name)))))
+           #$(program (rust "tools") "/bin/rustfmt" "--check" file-name)))))
