@@ -42,29 +42,17 @@
 ;;; of the g-hooks. Other g-hooks-*-link symlinks in .git/g-hooks/ are other
 ;;; generations for the g-hooks profile.
 ;;;
-;;; In addition to the profile in .git/g-hooks, there are also a set of
-;;; symlinks in /var/guix/profiles/per-user/*/g-hooks/ (i.e. %G-HOOKS-GCROOT)
-;;; that act as garbage collection roots and point at the generations of the
-;;; profile in .git/g-hooks/. The names of these links are determined by
-;;; PATH-IDENTIFIER, which will hash the canonical path name so that they will
-;;; be globally unique. The gc roots point at the generation links in
-;;; .git/g-hooks/ instead of directly at the store paths so that if the user
-;;; deletes the git repository, the store object for the g-hooks will get
-;;; garbage collected automatically with no additional action from the
-;;; user. If this happens, the %G-HOOKS-GCROOT links will be broken but will
-;;; not be automatically cleaned up by 'guix gc'. As a result, we scan through
-;;; and delete these broken links in DELETE-GENERATIONS.
+;;; In addition to the profile in .git/g-hooks, there are also a set of symlinks
+;;; in /var/guix/gcroots/auto (i.e. guix's indirect gcroot directory) that act
+;;; as garbage collection roots and point at the generations of the profile in
+;;; .git/g-hooks/. The gc roots point at the generation links in .git/g-hooks/
+;;; instead of directly at the store paths so that if the user deletes the git
+;;; repository, the store object for the g-hooks will get garbage collected
+;;; automatically with no additional action from the user. If this happens, the
+;;; indirect gcroot links will be broken but will not be automatically cleaned
+;;; up by 'guix gc'.
 ;;;
 ;;; Code:
-
-(define (path-identifier path)
-  "Return a deterministic, globally unique representation of PATH that may be
-used as a valid filename."
-  (let ((canonical (canonicalize-path path)))
-    (string-append
-     (bytevector->base32-string (sha256 (string->utf8 canonical)))
-     "-"
-     (normalize-string canonical))))
 
 (define-syntax-rule (g-hooks (name gexp) ...)
   "Create a set of g-hooks with NAME bound to GEXP."
@@ -113,15 +101,6 @@ repository."
     (or (maybe-load-config "g-hooks.scm")
         (maybe-load-config ".g-hooks")
         (error "configuration file not found"))))
-
-(define %global-id
-  (delay (path-identifier (force %git-common-dir))))
-
-(define %g-hooks-gcroot
-  (delay (string-append %profile-directory "/g-hooks")))
-
-(define %g-hooks-gcprofile
-  (delay (string-append (force %g-hooks-gcroot) "/" (force %global-id))))
 
 (define %g-hooks-root
   (delay (string-append (force %git-common-dir) "/g-hooks")))
@@ -203,35 +182,29 @@ directory."
       (mlet* %store-monad
           ((g-hooks-drv (g-hooks->git-hook-derivation g-hooks))
            (_ (built-derivations (list g-hooks-drv)))
-           (g-hooks-out-path -> (derivation->output-path g-hooks-drv)))
-        (let* ((number (+ 1 (generation-number (force %g-hooks-profile))))
-               (generation (generation-file-name
-                            (force %g-hooks-profile) number))
-               (gc-generation (generation-file-name
-                               (force %g-hooks-gcprofile) number))
-               (hooks-dir (string-append (force %git-common-dir) "/hooks")))
-          (mkdir-p (force %g-hooks-root))
-          (mkdir-p (force %g-hooks-gcroot))
-          ;; make the generation pointing at the new g-hooks
-          (switch-symlinks generation g-hooks-out-path)
-          ;; point the profile at the latest generation
-          (switch-symlinks (force %g-hooks-profile) generation)
-          ;; remove the existing hooks/ directory (if it exists); this
-          ;; shouldn't remove the symlink
-          (delete-file-recursively hooks-dir)
-          ;; finally point the .git/hooks/ directory at the profile
-          (switch-symlinks hooks-dir (string-append (force %g-hooks-profile)
-                                                    "/hooks"))
-          ;; make a garbage collection root pointing at the new generation to
-          ;; avoid removing the hooks during gc passes; note that we point at
-          ;; the generation instead of the store path directly so if the git
-          ;; repo is removed, the hooks can be garbage collected
-          ;;
-          ;; it's also important that this symlink is created last so it is
-          ;; never broken to avoid race conditions with our delete-generations
-          ;; code
-          (switch-symlinks gc-generation generation))
-        (return g-hooks-out-path)))))
+           (g-hooks-out-path -> (derivation->output-path g-hooks-drv))
+           (number -> (+ 1 (generation-number (force %g-hooks-profile))))
+           (generation -> (generation-file-name
+                           (force %g-hooks-profile) number))
+           (hooks-dir -> (string-append (force %git-common-dir) "/hooks")))
+        (mkdir-p (force %g-hooks-root))
+        ;; make the generation pointing at the new g-hooks
+        (switch-symlinks generation g-hooks-out-path)
+        ;; point the profile at the latest generation
+        (switch-symlinks (force %g-hooks-profile) generation)
+        ;; remove the existing hooks/ directory (if it exists); this shouldn't
+        ;; remove the symlink
+        (delete-file-recursively hooks-dir)
+        ;; finally point the .git/hooks/ directory at the profile
+        (switch-symlinks hooks-dir (string-append (force %g-hooks-profile)
+                                                  "/hooks"))
+        ;; make an indirect garbage collection root pointing at the new
+        ;; generation to avoid removing the hooks during gc passes; note that we
+        ;; point at the generation instead of the store path directly so if the
+        ;; git repo is removed, the hooks can be garbage collected
+        (mbegin %store-monad
+          ((store-lift add-indirect-root) generation)
+          (return g-hooks-out-path))))))
 
 (define (print-generation number)
   "Pretty-print generation NUMBER in a human-readable format."
@@ -280,13 +253,7 @@ directory."
   (unless (null? (cdr args))
     (error "unrecognized arguments:" (string-join args)))
   (with-store store
-    (delete-matching-generations store (force %g-hooks-profile) #f))
-  ;; clean up any broken symlinks; these could be from either deleting the
-  ;; generations in the previous line or from the user deleting a different
-  ;; git repository (the store will already be gc'd in the latter case, but we
-  ;; manage some additional symlinks under the gcroot that guix will not clean
-  ;; up by default)
-  (for-each delete-file (broken-symlinks (force %g-hooks-gcroot))))
+    (delete-matching-generations store (force %g-hooks-profile) #f)))
 
 (define (list-generations args)
   "Display all g-hooks generations in a human-readable format."
