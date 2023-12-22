@@ -3,7 +3,9 @@
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
 (define-module (g-hooks core)
+  #:use-module (g-hooks library)
   #:use-module (gcrypt hash)
+  #:use-module (gnu services)
   #:use-module (guix base32)
   #:use-module (guix build lisp-utils)
   #:use-module (guix build utils)
@@ -54,11 +56,12 @@
 ;;;
 ;;; Code:
 
-(define-syntax-rule (g-hooks (name gexp) ...)
-  "Create a set of g-hooks with NAME bound to GEXP."
-  (list
-   (cons (quote name) gexp)
-   ...))
+(define-syntax-rule (g-hooks services ...)
+  "Create a set of g-hooks using SERVICES."
+  (cons*
+   services
+   ...
+   %base-g-hooks-services))
 
 (define (call arg0 . argv)
   "Call the program ARG0 with arguments ARGV, capturing its output. If the
@@ -108,70 +111,11 @@ repository."
 (define %g-hooks-profile
   (delay (string-append (force %g-hooks-root) "/g-hooks")))
 
-;; All git hooks as of git 2.41.0, taken from githooks(5).
-(define %recognized-hooks
-  '(applypatch-msg
-    pre-applypatch
-    post-applypatch
-    pre-commit
-    pre-merge-commit
-    prepare-commit-msg
-    commit-msg
-    post-commit
-    pre-rebase
-    post-checkout
-    post-merge
-    pre-push
-    pre-receive
-    update
-    proc-receive
-    post-receive
-    post-update
-    reference-transaction
-    push-to-checkout
-    pre-auto-gc
-    post-rewrite
-    sendemail-validate
-    fsmonitor-watchman
-    p4-changelist
-    p4-prepare-changelist
-    p4-post-changelist
-    p4-pre-submit
-    post-index-change))
-
 (define (g-hooks->git-hook-derivation g-hooks)
   "Convert a set of G-HOOKS into a derivation that can be used as a .git/hooks
 directory."
-  (define (channel->sexp channel)
-    `(channel (name ,(channel-name channel))
-              (url ,(channel-url channel))
-              (branch ,(channel-branch channel))
-              (commit ,(channel-commit channel))))
-  (let ((names
-         (map (lambda (hook)
-                (let ((name (car hook)))
-                  (if (member name %recognized-hooks)
-                      (string-append "hooks/" (symbol->string name))
-                      (error "unrecognized hook:" name))))
-              g-hooks))
-        (scripts
-         (map (lambda (hook)
-                (program-file (symbol->string (car hook)) (cdr hook)))
-              g-hooks))
-        (channels (plain-file "channels.scm"
-                              (object->string
-                               (map channel->sexp (current-channels))))))
-    (gexp->derivation
-     "g-hooks"
-     (with-imported-modules '((guix build utils))
-       #~(begin
-           (use-modules (guix build utils))
-           (mkdir-p (string-append #$output "/hooks"))
-           (for-each
-            (lambda (name script)
-              (symlink script (string-append #$output "/" name)))
-            (quote ("channels.scm" #$@names))
-            (quote (#$channels #$@scripts))))))))
+  (service-value
+   (fold-services g-hooks #:target-type g-hooks-service-type)))
 
 (define (reconfigure args)
   "Reconfigure .git/hooks/ based on the repository's g-hooks."
