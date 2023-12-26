@@ -8,6 +8,8 @@
   #:use-module (gnu packages rust)
   #:use-module (gnu packages version-control)
   #:use-module (gnu services)
+  #:use-module (guix channels)
+  #:use-module (guix describe)
   #:use-module (guix gexp)
   #:use-module (guix monads)
   #:use-module (guix store)
@@ -15,6 +17,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (g-hooks-service-type
+            g-hooks-provenance-service-type
 
             ;; Core git hook services and extension macros
             applypatch-msg
@@ -97,6 +100,31 @@ monadic MEXTENSIONS."
                  "Build the g-hooks top-level directory, which contains the
 @file{hooks/} directory to symlink into @file{.git/hooks} as well as metadata
 about the g-hooks derivation.")))
+
+(define (g-hooks-provenance-service config)
+  "Extend G-HOOKS-SERVICE-TYPE with provenance information about the g-hooks
+profile."
+  (define (channel->sexp channel)
+    `(channel (name ,(channel-name channel))
+              (url ,(channel-url channel))
+              (branch ,(channel-branch channel))
+              (commit ,(channel-commit channel))))
+  (with-monad %store-monad
+    (return
+     `(("channels.scm"
+        ,(plain-file "channels.scm"
+                     (object->string
+                      (map channel->sexp (current-channels)))))))))
+
+(define g-hooks-provenance-service-type
+  (service-type (name 'g-hooks-provenance)
+                (extensions
+                 (list (service-extension g-hooks-service-type
+                                          g-hooks-provenance-service)))
+                (default-value '())
+                (description
+                 "Add provenance information to the g-hooks profile in the
+profile itself, including the channels used when building the profile.")))
 
 ;; Encapsulation of a git-hook combining the name of the hook with the set of
 ;; g-expressions that are run for the hook. This is the configuration type for
@@ -321,6 +349,7 @@ display name for the service and HOOK-NAME is the string name of the git hook."
 ;; will not produce hooks by default if they are not extended.
 (define %base-g-hooks-services
   (list (service g-hooks-service-type)
+        (service g-hooks-provenance-service-type)
         (service g-hooks-applypatch-msg-service-type)
         (service g-hooks-pre-applypatch-service-type)
         (service g-hooks-post-applypatch-service-type)
