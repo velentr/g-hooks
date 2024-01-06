@@ -156,228 +156,88 @@ G-HOOK-SERVICE-TYPE."
   (git-hook-gexp (git-hook-gexp->name hook)
                  (append (git-hook-gexp->gexps hook) gexps)))
 
-(define-syntax-rule (define-git-hook-service
-                      service-type-name
-                      service-name
-                      hook-name)
-  "Define a core g-hook service named SERVICE-TYPE-NAME. SERVICE-NAME is a
-display name for the service and HOOK-NAME is the string name of the git hook."
-  (define-public service-type-name
-    (service-type (name (quote service-name))
-                  (extensions
-                   (list (service-extension g-hooks-service-type
-                                            git-hook-gexp->g-hook)))
-                  (compose concatenate)
-                  (extend extend-git-hook)
-                  (default-value (git-hook-gexp hook-name '()))
-                  (description ""))))
+(define (hook-syntax->service-type hook-name)
+  "Given a syntax form of an identifier HOOK-NAME, generate the symbol
+for its service type. This symbol is suitable for converting back into
+a syntax form using DATUM->SYNTAX."
+  (string->symbol
+   (string-append "g-hooks-"
+                  (symbol->string (syntax->datum hook-name))
+                  "-service-type")))
 
-(define-syntax-rule (define-git-hook-syntax hook-name service-name)
-  (define-syntax-rule (hook-name gexp)
-    (simple-service (quote gexp) service-name (list gexp))))
+(define (define-base-g-hook-service hook-name)
+  "Define the syntactic s-expression for the base g-hook service HOOK-NAME. This
+includes a public service type named g-hooks-HOOK-NAME-service-type and a syntax
+macro named HOOK-NAME that expands into a simple service definition for the
+service."
+  (let* ((string-name (symbol->string hook-name))
+         (service-name (string->symbol (string-append "g-hooks-" string-name)))
+         (service-type-name (hook-syntax->service-type hook-name)))
+    `(begin
+       (define-public ,service-type-name
+         (service-type (name (quote ,service-name))
+                       (extensions (list (service-extension g-hooks-service-type
+                                                            git-hook-gexp->g-hook)))
+                       (compose concatenate)
+                       (extend extend-git-hook)
+                       (default-value (git-hook-gexp ,string-name (list)))
+                       (description "")))
+       (define-syntax-rule (,hook-name gexp)
+         (simple-service (quote gexp) ,service-type-name (list gexp))))))
 
-(define-git-hook-service g-hooks-applypatch-msg-service-type
-  g-hooks-applypatch-msg "applypatch-msg")
-
-(define-git-hook-syntax applypatch-msg
-  g-hooks-applypatch-msg-service-type)
-
-(define-git-hook-service g-hooks-pre-applypatch-service-type
-  g-hooks-pre-applypatch "pre-applypatch")
-
-(define-git-hook-syntax pre-applypatch
-  g-hooks-pre-applypatch-service-type)
-
-(define-git-hook-service g-hooks-post-applypatch-service-type
-  g-hooks-post-applypatch "post-applypatch")
-
-(define-git-hook-syntax post-applypatch
-  g-hooks-post-applypatch-service-type)
-
-(define-git-hook-service g-hooks-pre-commit-service-type
-  g-hooks-pre-commit "pre-commit")
-
-(define-git-hook-syntax pre-commit
-  g-hooks-pre-commit-service-type)
-
-(define-git-hook-service g-hooks-pre-merge-commit-service-type
-  g-hooks-pre-merge-commit "pre-merge-commit")
-
-(define-git-hook-syntax pre-merge-commit
-  g-hooks-pre-merge-commit-service-type)
-
-(define-git-hook-service g-hooks-prepare-commit-msg-service-type
-  g-hooks-prepare-commit-msg "prepare-commit-msg")
-
-(define-git-hook-syntax prepare-commit-msg
-  g-hooks-prepare-commit-msg-service-type)
-
-(define-git-hook-service g-hooks-commit-msg-service-type
-  g-hooks-commit-msg "commit-msg")
-
-(define-git-hook-syntax commit-msg
-  g-hooks-commit-msg-service-type)
-
-(define-git-hook-service g-hooks-post-commit-service-type
-  g-hooks-post-commit "post-commit")
-
-(define-git-hook-syntax post-commit
-  g-hooks-post-commit-service-type)
-
-(define-git-hook-service g-hooks-pre-rebase-service-type
-  g-hooks-pre-rebase "pre-rebase")
-
-(define-git-hook-syntax pre-rebase
-  g-hooks-pre-rebase-service-type)
-
-(define-git-hook-service g-hooks-post-checkout-service-type
-  g-hooks-post-checkout "post-checkout")
-
-(define-git-hook-syntax post-checkout
-  g-hooks-post-checkout-service-type)
-
-(define-git-hook-service g-hooks-post-merge-service-type
-  g-hooks-post-merge "post-merge")
-
-(define-git-hook-syntax post-merge
-  g-hooks-post-merge-service-type)
-
-(define-git-hook-service g-hooks-pre-push-service-type
-  g-hooks-pre-push "pre-push")
-
-(define-git-hook-syntax pre-push
-  g-hooks-pre-push-service-type)
-
-(define-git-hook-service g-hooks-pre-receive-service-type
-  g-hooks-pre-receive "pre-receive")
-
-(define-git-hook-syntax pre-receive
-  g-hooks-pre-receive-service-type)
-
-(define-git-hook-service g-hooks-update-service-type
-  g-hooks-update "update")
-
-(define-git-hook-syntax update
-  g-hooks-update-service-type)
-
-(define-git-hook-service g-hooks-proc-receive-service-type
-  g-hooks-proc-receive "proc-receive")
-
-(define-git-hook-syntax proc-receive
-  g-hooks-proc-receive-service-type)
-
-(define-git-hook-service g-hooks-post-receive-service-type
-  g-hooks-post-receive "post-receive")
-
-(define-git-hook-syntax post-receive
-  g-hooks-post-receive-service-type)
-
-(define-git-hook-service g-hooks-post-update-service-type
-  g-hooks-post-update "post-update")
-
-(define-git-hook-syntax post-update
-  g-hooks-post-update-service-type)
-
-(define-git-hook-service g-hooks-reference-transaction-service-type
-  g-hooks-reference-transaction "reference-transaction")
-
-(define-git-hook-syntax reference-transaction
-  g-hooks-reference-transaction-service-type)
-
-(define-git-hook-service g-hooks-push-to-checkout-service-type
-  g-hooks-push-to-checkout "push-to-checkout")
-
-(define-git-hook-syntax push-to-checkout
-  g-hooks-push-to-checkout-service-type)
-
-(define-git-hook-service g-hooks-pre-auto-gc-service-type
-  g-hooks-pre-auto-gc "pre-auto-gc")
-
-(define-git-hook-syntax pre-auto-gc
-  g-hooks-pre-auto-gc-service-type)
-
-(define-git-hook-service g-hooks-post-rewrite-service-type
-  g-hooks-post-rewrite "post-rewrite")
-
-(define-git-hook-syntax post-rewrite
-  g-hooks-post-rewrite-service-type)
-
-(define-git-hook-service g-hooks-sendemail-validate-service-type
-  g-hooks-sendemail-validate "sendemail-validate")
-
-(define-git-hook-syntax sendemail-validate
-  g-hooks-sendemail-validate-service-type)
-
-(define-git-hook-service g-hooks-fsmonitor-watchman-service-type
-  g-hooks-fsmonitor-watchman "fsmonitor-watchman")
-
-(define-git-hook-syntax fsmonitor-watchman
-  g-hooks-fsmonitor-watchman-service-type)
-
-(define-git-hook-service g-hooks-p4-changelist-service-type
-  g-hooks-p4-changelist "p4-changelist")
-
-(define-git-hook-syntax p4-changelist
-  g-hooks-p4-changelist-service-type)
-
-(define-git-hook-service g-hooks-p4-prepare-changelist-service-type
-  g-hooks-p4-prepare-changelist "p4-prepare-changelist")
-
-(define-git-hook-syntax p4-prepare-changelist
-  g-hooks-p4-prepare-changelist-service-type)
-
-(define-git-hook-service g-hooks-p4-post-changelist-service-type
-  g-hooks-p4-post-changelist "p4-post-changelist")
-
-(define-git-hook-syntax p4-post-changelist
-  g-hooks-p4-post-changelist-service-type)
-
-(define-git-hook-service g-hooks-p4-pre-submit-service-type
-  g-hooks-p4-pre-submit "p4-pre-submit")
-
-(define-git-hook-syntax p4-pre-submit
-  g-hooks-p4-pre-submit-service-type)
-
-(define-git-hook-service g-hooks-post-index-change-service-type
-  g-hooks-post-index-change "post-index-change")
-
-(define-git-hook-syntax post-index-change
-  g-hooks-post-index-change-service-type)
+(define-syntax define-base-g-hooks-services
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name all-g-hooks)
+       (let* ((all-g-hooks-datum (syntax->datum #'all-g-hooks))
+              (all-service-types
+               (datum->syntax
+                x (map (lambda (service-type)
+                         (list 'service
+                               (hook-syntax->service-type service-type)))
+                       all-g-hooks-datum)))
+              (all-service-definitions
+               (datum->syntax
+                x (map define-base-g-hook-service all-g-hooks-datum))))
+         #`(begin
+             #,@all-service-definitions
+             (define name
+               (list (service g-hooks-service-type)
+                     (service g-hooks-provenance-service-type)
+                     #,@all-service-types))))))))
 
 ;; Base services required for defining g-hooks. This includes all core git hook
 ;; services (this is required in order to extend these dynamicallly), but they
 ;; will not produce hooks by default if they are not extended.
-(define %base-g-hooks-services
-  (list (service g-hooks-service-type)
-        (service g-hooks-provenance-service-type)
-        (service g-hooks-applypatch-msg-service-type)
-        (service g-hooks-pre-applypatch-service-type)
-        (service g-hooks-post-applypatch-service-type)
-        (service g-hooks-pre-commit-service-type)
-        (service g-hooks-pre-merge-commit-service-type)
-        (service g-hooks-prepare-commit-msg-service-type)
-        (service g-hooks-commit-msg-service-type)
-        (service g-hooks-post-commit-service-type)
-        (service g-hooks-pre-rebase-service-type)
-        (service g-hooks-post-checkout-service-type)
-        (service g-hooks-post-merge-service-type)
-        (service g-hooks-pre-push-service-type)
-        (service g-hooks-pre-receive-service-type)
-        (service g-hooks-update-service-type)
-        (service g-hooks-proc-receive-service-type)
-        (service g-hooks-post-receive-service-type)
-        (service g-hooks-post-update-service-type)
-        (service g-hooks-reference-transaction-service-type)
-        (service g-hooks-push-to-checkout-service-type)
-        (service g-hooks-pre-auto-gc-service-type)
-        (service g-hooks-post-rewrite-service-type)
-        (service g-hooks-sendemail-validate-service-type)
-        (service g-hooks-fsmonitor-watchman-service-type)
-        (service g-hooks-p4-changelist-service-type)
-        (service g-hooks-p4-prepare-changelist-service-type)
-        (service g-hooks-p4-post-changelist-service-type)
-        (service g-hooks-p4-pre-submit-service-type)
-        (service g-hooks-post-index-change-service-type)))
+(define-base-g-hooks-services %base-g-hooks-services
+  (applypatch-msg
+   pre-applypatch
+   post-applypatch
+   pre-commit
+   pre-merge-commit
+   prepare-commit-msg
+   commit-msg
+   post-commit
+   pre-rebase
+   post-checkout
+   post-merge
+   pre-push
+   pre-receive
+   update
+   proc-receive
+   post-receive
+   post-update
+   reference-transaction
+   push-to-checkout
+   pre-auto-gc
+   post-rewrite
+   sendemail-validate
+   fsmonitor-watchman
+   p4-changelist
+   p4-prepare-changelist
+   p4-post-changelist
+   p4-pre-submit
+   post-index-change))
 
 (define black/pre-commit
   (for-each-staged-file
