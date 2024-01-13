@@ -50,6 +50,13 @@
             post-index-change
             %base-g-hooks-services
 
+            ;; Optional git hook services for use in your g-hooks configuration
+            black-check
+            git-lfs-hooks
+            gitlint-run
+            reuse-lint
+            rustfmt-check
+
             ;; Deprecated g-expressions
             black/pre-commit
             git-lfs/post-checkout
@@ -254,20 +261,62 @@ service."
                       "--quiet"
                       file-name)))))
 
+(define (black-check)
+  "Run @code{black --check} on all modified python files during the
+@code{pre-commit} hook."
+  (pre-commit black/pre-commit))
+
 (define (make-git-lfs hook)
   (program* git-lfs "/bin/git-lfs" #$hook))
 
 (define git-lfs/post-checkout
   (make-git-lfs "post-checkout"))
 
+(define (g-hooks-git-lfs-post-checkout-service config)
+  (list git-lfs/post-checkout))
+
 (define git-lfs/post-commit
   (make-git-lfs "post-commit"))
+
+(define (g-hooks-git-lfs-post-commit-service config)
+  (list git-lfs/post-commit))
 
 (define git-lfs/post-merge
   (make-git-lfs "post-merge"))
 
+(define (g-hooks-git-lfs-post-merge-service config)
+  (list git-lfs/post-merge))
+
 (define git-lfs/pre-push
   (make-git-lfs "pre-push"))
+
+(define (g-hooks-git-lfs-pre-push-service config)
+  (list git-lfs/pre-push))
+
+(define g-hooks-git-lfs-service-type
+  (service-type
+   (name 'g-hooks-git-lfs)
+   (extensions
+    (list (service-extension g-hooks-post-checkout-service-type
+                             g-hooks-git-lfs-post-checkout-service)
+          (service-extension g-hooks-post-commit-service-type
+                             g-hooks-git-lfs-post-commit-service)
+          (service-extension g-hooks-post-merge-service-type
+                             g-hooks-git-lfs-post-merge-service)
+          (service-extension g-hooks-pre-push-service-type
+                             g-hooks-git-lfs-pre-push-service)))
+   (default-value '())
+   (description "Add all the @code{githooks(5)} required for using
+@code{git-lfs} on a repository.")))
+
+(define (git-lfs-hooks)
+  "Install the proper @code{githoooks(5) to ensure that Git LFS is setup
+properly.
+
+This handles the hook installation from @code{git-lfs install}. You'll still
+need to run @code{git-lfs install --skip-repo} to install the smudge and clean
+filters for Git LFS."
+  (service g-hooks-git-lfs-service-type))
 
 (define gitlint/commit-msg
   #~(with-input-from-file "/dev/tty"
@@ -279,8 +328,18 @@ service."
                    (cadr (command-line))
                    "run-hook"))))
 
+(define (gitlint-run)
+  "Check your git commit messages for styling issues during the
+@code{commit-msg} hook."
+  (commit-msg gitlint/commit-msg))
+
 (define reuse-lint/pre-commit
   (program reuse "/bin/reuse" "lint"))
+
+(define (reuse-lint)
+  "Lint the project directory for compliance with version 3.0 of the REUSE
+Specification during the @code{pre-commit} hook."
+  (pre-commit reuse-lint/pre-commit))
 
 (define rustfmt/pre-commit
   (for-each-staged-file
@@ -289,3 +348,8 @@ service."
        (if (and ext-idx
                 (equal? (substring file-name ext-idx) ".rs"))
            #$(program (rust "tools") "/bin/rustfmt" "--check" file-name)))))
+
+(define (rustfmt-check)
+  "Run @code{rustfmt --check} on all modified rust files during the
+@code{pre-commit} hook."
+  (pre-commit rustfmt/pre-commit))
