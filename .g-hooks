@@ -6,5 +6,5 @@
              (g-hooks library))
 
 (g-hooks
- (commit-msg gitlint/commit-msg)
- (pre-commit reuse-lint/pre-commit))
+ (gitlint-run)
+ (reuse-lint))
