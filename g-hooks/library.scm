@@ -55,6 +55,7 @@
             git-lfs-hooks
             gitlint-run
             reuse-lint
+            run-commit-hooks-on-applypatch
             rustfmt-check
 
             ;; Deprecated g-expressions
@@ -340,6 +341,30 @@ filters for Git LFS."
   "Lint the project directory for compliance with version 3.0 of the REUSE
 Specification during the @code{pre-commit} hook."
   (pre-commit reuse-lint/pre-commit))
+
+(define (run-git-hook hook)
+  "Make a service extension for running the given git HOOK."
+  (lambda (config)
+    (list (program* git "/bin/git" "hook" "run" #$hook "--"))))
+
+(define g-hooks-commit-hooks-on-applypatch-service-type
+  (service-type
+   (name 'g-hooks-commit-hooks-on-applypatch)
+   (extensions
+    (list (service-extension g-hooks-pre-applypatch-service-type
+                             (run-git-hook "pre-commit"))
+          (service-extension g-hooks-post-applypatch-service-type
+                             (run-git-hook "post-commit"))
+          (service-extension g-hooks-applypatch-msg-service-type
+                             (run-git-hook "commit-msg"))))
+   (default-value '())
+   (description "Run the @code{commit-msg}, @code{pre-commit}, and
+@code{post-commit} hooks during @code{applypatch-msg}, @code{pre-applypatch},
+and @code{post-applypatch} respectively.")))
+
+(define (run-commit-hooks-on-applypatch)
+  "Run the normal commit hooks during applypatch."
+  (service g-hooks-commit-hooks-on-applypatch-service-type))
 
 (define rustfmt/pre-commit
   (for-each-staged-file
