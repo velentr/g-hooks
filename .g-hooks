@@ -7,4 +7,5 @@
 
 (g-hooks
  (gitlint-run)
- (reuse-lint))
+ (reuse-lint)
+ (run-commit-hooks-on-applypatch))
