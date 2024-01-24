@@ -345,7 +345,13 @@ Specification during the @code{pre-commit} hook."
 (define (run-git-hook hook)
   "Make a service extension for running the given git HOOK."
   (lambda (config)
-    (list (program* git "/bin/git" "hook" "run" #$hook "--"))))
+    (list (program* git
+                    "/bin/git"
+                    "hook"
+                    "run"
+                    "--ignore-missing"
+                    #$hook
+                    "--"))))
 
 (define g-hooks-commit-hooks-on-applypatch-service-type
   (service-type
