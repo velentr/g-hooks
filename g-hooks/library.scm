@@ -54,6 +54,7 @@
             black-check
             git-lfs-hooks
             gitlint-run
+            poetry-check
             reuse-lint
             run-commit-hooks-on-applypatch
             rustfmt-check
@@ -341,6 +342,11 @@ filters for Git LFS."
   "Lint the project directory for compliance with version 3.0 of the REUSE
 Specification during the @code{pre-commit} hook."
   (pre-commit reuse-lint/pre-commit))
+
+(define (poetry-check)
+  "Ensure that your poetry configuration does not get committed in a broken
+state."
+  (pre-commit (program poetry "/bin/poetry" "check")))
 
 (define (run-git-hook hook)
   "Make a service extension for running the given git HOOK."
