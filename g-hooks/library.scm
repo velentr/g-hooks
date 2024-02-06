@@ -167,37 +167,39 @@ G-HOOK-SERVICE-TYPE."
   (git-hook-gexp (git-hook-gexp->name hook)
                  (append (git-hook-gexp->gexps hook) gexps)))
 
-(define (hook-syntax->service-type hook-name)
-  "Given a syntax form of an identifier HOOK-NAME, generate the symbol
-for its service type. This symbol is suitable for converting back into
-a syntax form using DATUM->SYNTAX."
-  (string->symbol
-   (string-append "g-hooks-"
-                  (symbol->string (syntax->datum hook-name))
-                  "-service-type")))
 
-(define (define-base-g-hook-service hook-name)
-  "Define the syntactic s-expression for the base g-hook service HOOK-NAME. This
-includes a public service type named g-hooks-HOOK-NAME-service-type and a syntax
-macro named HOOK-NAME that expands into a simple service definition for the
-service."
-  (let* ((string-name (symbol->string hook-name))
-         (service-name (string->symbol (string-append "g-hooks-" string-name)))
-         (service-type-name (hook-syntax->service-type hook-name)))
-    `(begin
-       (define-public ,service-type-name
-         (service-type (name (quote ,service-name))
-                       (extensions (list (service-extension g-hooks-service-type
-                                                            git-hook-gexp->g-hook)))
-                       (compose concatenate)
-                       (extend extend-git-hook)
-                       (default-value (git-hook-gexp ,string-name (list)))
-                       (description "")))
-       (define-syntax-rule (,hook-name gexp)
-         (simple-service (quote gexp) ,service-type-name (list gexp))))))
 
 (define-syntax define-base-g-hooks-services
   (lambda (x)
+    (define (hook-syntax->service-type hook-name)
+      "Given a syntax form of an identifier HOOK-NAME, generate the symbol
+for its service type. This symbol is suitable for converting back into
+a syntax form using DATUM->SYNTAX."
+      (string->symbol
+       (string-append "g-hooks-"
+                      (symbol->string (syntax->datum hook-name))
+                      "-service-type")))
+    (define (define-base-g-hook-service hook-name)
+      "Define the syntactic s-expression for the base g-hook service
+HOOK-NAME. This includes a public service type named
+g-hooks-HOOK-NAME-service-type and a syntax macro named HOOK-NAME that expands
+into a simple service definition for the service."
+      (let* ((string-name (symbol->string hook-name))
+             (service-name
+              (string->symbol (string-append "g-hooks-" string-name)))
+             (service-type-name (hook-syntax->service-type hook-name)))
+        `(begin
+           (define-public ,service-type-name
+             (service-type (name (quote ,service-name))
+                           (extensions
+                            (list (service-extension g-hooks-service-type
+                                                     git-hook-gexp->g-hook)))
+                           (compose concatenate)
+                           (extend extend-git-hook)
+                           (default-value (git-hook-gexp ,string-name (list)))
+                           (description "")))
+           (define-syntax-rule (,hook-name gexp)
+             (simple-service (quote gexp) ,service-type-name (list gexp))))))
     (syntax-case x ()
       ((_ name all-g-hooks)
        (let* ((all-g-hooks-datum (syntax->datum #'all-g-hooks))
