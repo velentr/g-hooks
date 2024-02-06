@@ -8,4 +8,5 @@
 (g-hooks
  (gitlint-run)
  (reuse-lint)
- (run-commit-hooks-on-applypatch))
+ (run-commit-hooks-on-applypatch)
+ (shellcheck-check))
