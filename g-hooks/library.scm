@@ -3,6 +3,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
 (define-module (g-hooks library)
+  #:use-module (gnu packages haskell-apps)
   #:use-module (gnu packages license)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages rust)
@@ -58,6 +59,7 @@
             reuse-lint
             run-commit-hooks-on-applypatch
             rustfmt-check
+            shellcheck-check
 
             ;; Deprecated g-expressions
             black/pre-commit
@@ -390,3 +392,14 @@ and @code{post-applypatch} respectively.")))
   "Run @code{rustfmt --check} on all modified rust files during the
 @code{pre-commit} hook."
   (pre-commit rustfmt/pre-commit))
+
+(define (shellcheck-check)
+  "Run @code{shellcheck} on all modified shell files during the
+@code{pre-commit} hook."
+  (pre-commit
+   (for-each-staged-file
+    (file-name)
+    #~(let ((ext-idx (string-rindex file-name #\.)))
+        (if (and ext-idx
+                 (equal? (substring file-name ext-idx) ".sh"))
+            #$(program shellcheck "/bin/shellcheck" file-name))))))
