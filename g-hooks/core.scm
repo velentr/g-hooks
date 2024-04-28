@@ -19,7 +19,7 @@
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
   #:export (g-hooks
-            main))
+            g-hooks-main))
 
 ;;; Commentary:
 ;;;
@@ -237,9 +237,9 @@ the valid values for COMMAND are listed below:
     ("delete-generations" . ,delete-generations)
     ("switch-generation" . ,switch-generation)))
 
-(define (main)
+(define (g-hooks-main args)
   (let ((options (getopt-long
-                  (command-line)
+                  (cons "g-hooks" args)
                   %main-options
                   #:stop-at-first-non-option #t)))
     (cond
