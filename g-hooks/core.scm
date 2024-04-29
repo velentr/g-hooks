@@ -176,15 +176,6 @@ directory."
         (format #t "  channels:~%")
         (for-each display-channel channels)))))
 
-(define (broken-symlinks directory)
-  "Return a list of all broken symlinks in the given DIRECTORY."
-  (map
-   (lambda (entry)
-     (string-append directory "/" entry))
-   (scandir directory
-            (lambda (entry)
-              (not (file-exists? (string-append directory "/" entry)))))))
-
 (define (delete-generations args)
   "Delete all generations other than the current generation."
   (unless (null? (cdr args))
