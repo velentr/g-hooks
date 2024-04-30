@@ -4,7 +4,6 @@
 
 (define-module (g-hooks core)
   #:use-module (g-hooks library)
-  #:use-module (gcrypt hash)
   #:use-module (gnu services)
   #:use-module (guix build utils)
   #:use-module (guix channels)
