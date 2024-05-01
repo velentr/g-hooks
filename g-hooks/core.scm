@@ -236,7 +236,7 @@ the valid values for COMMAND are listed below:
      ((option-ref options 'help #f)
       (display %main-usage))
      ((option-ref options 'version #f)
-      (display "g-hooks version 0.5.1")
+      (display "g-hooks version 0.6.0")
       (newline))
      ((not (null? (option-ref options '() '())))
       (let* ((arguments (option-ref options '() '()))
