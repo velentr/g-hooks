@@ -3,6 +3,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
 (define-module (g-hooks library)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages haskell-apps)
   #:use-module (gnu packages license)
   #:use-module (gnu packages python-xyz)
@@ -53,6 +54,7 @@
 
             ;; Optional git hook services for use in your g-hooks configuration
             black-check
+            gerrit-hook
             git-lfs-hooks
             gitlint-run
             poetry-check
@@ -271,6 +273,13 @@ into a simple service definition for the service."
   "Run @code{black --check} on all modified python files during the
 @code{pre-commit} hook."
   (pre-commit black/pre-commit))
+
+(define (gerrit-hook)
+  "Run Gerrit's commit-msg hook adding a Change-Id trailer to the commit
+message."
+  (commit-msg (bash-script*
+               "scripts/gerrit-commit-msg.sh"
+               (list coreutils git-minimal grep sed))))
 
 (define (make-git-lfs hook)
   (program* git-lfs "/bin/git-lfs" #$hook))

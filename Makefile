@@ -19,6 +19,9 @@ scm_sources = \
 	g-hooks/utils.scm
 objs = $(patsubst %.scm,%.go,$(scm_sources))
 
+scripts = \
+	g-hooks/scripts/gerrit-commit-msg.sh
+
 guild_target := $(if $(TARGET),--target=$(TARGET),)
 
 all: $(objs)
@@ -30,6 +33,11 @@ install: $(objs)
 	$(foreach obj,$(objs),$(INSTALL) --mode=0644 $(obj) $(SCM_COMPILED_PATH);)
 	mkdir --parents $(EXT_PATH)
 	$(INSTALL) --mode=0644 guix/extensions/g-hooks.scm $(EXT_PATH)
+
+	mkdir --parents $(SCM_PATH)/scripts
+	$(INSTALL) --mode=0644 --target-directory=$(SCM_PATH)/scripts $(scripts)
+	mkdir --parents $(SCM_COMPILED_PATH)/scripts
+	$(INSTALL) --mode=0644 --target-directory=$(SCM_COMPILED_PATH)/scripts $(scripts)
 
 clean:
 	rm --force $(objs)
