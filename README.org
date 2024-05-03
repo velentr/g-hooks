@@ -16,7 +16,7 @@ g-hooks: Manage git hooks using guix
 
   (g-hooks
     (pre-commit reuse-lint))
-  $ g-hooks reconfigure
+  $ guix g-hooks reconfigure
   ...
   $ git commit
   # SUMMARY
@@ -33,7 +33,7 @@ g-hooks: Manage git hooks using guix
 
   Congratulations! Your project is compliant with version 3.0 of the REUSE Specification :-)
   ...
-  $ g-hooks list-generations
+  $ guix g-hooks list-generations
   Generation 1	Sep 02 2023 14:31:46	(current)
     file name: /home/$USER/src/g-hooks/.git/g-hooks/g-hooks-1-link
     canonical file name: /gnu/store/3j8knz3xm6y9axjk7vincj8q3g2ah36x-g-hooks
@@ -55,20 +55,23 @@ you:
 - Upgrades are transactional: easily rollback to previous generations as
   needed
 
-To configure, add ~g-hooks.scm~ to the top-level of your git repository. This
-file should evaluate to an association list mapping git hook names to
-g-expressions describing the script to run. Usually, this should be done using
-the ~g-hooks~ macro:
+To configure, add ~g-hooks.scm~ or '~.g-hooks~ to the top-level of your git
+repository. This file should evaluate to a list of ~g-hooks~ services that are
+evaluated and installed in the ~.git/hooks~ directory. Usually, this should be
+done using the ~g-hooks~ macro and various git hook helper macros
+(e.g. ~pre-commit~):
 #+BEGIN_SRC scheme
   (g-hooks
     (pre-commit #~(...))
     (commit-msg #~(...)))
 #+END_SRC
 
-Then run ~g-hooks reconfigure~ to install the hooks. You can use
+Then run ~guix g-hooks reconfigure~ to install the hooks. You can use
 ~g-hooks list-generations~ to show all existing generations and
 ~g-hooks delete-generations~ to delete old generations that are no
-longer needed.
+longer needed. If the git repository containing the hooks is removed,
+the now unused hooks will automatically be cleaned up in the next
+~guix gc~.
 
 * QUESTIONS
 
@@ -86,19 +89,20 @@ What about [[https://pre-commit.com/][pre-commit]]?
 
 While ~pre-commit~ has a similar goal, ~g-hooks~ is built on top of guix to
 leverage an existing large package repository, make these hooks more
-reproducible, and (in the future) easily containerize hooks when they run.
+reproducible, and isolate the hooks from the user's environment.
 
-Currently ~pre-commit~ is more mature and has an larger library of existing
+Currently ~pre-commit~ is more mature and has a larger library of existing
 hooks, but I hope to change that soon.
 
 * SEE ALSO
 
 The [[https://guix.gnu.org/manual/en/html_node/][guix manual]] is your best resource for understanding how this all ties
 together. Specifically the section on [[https://guix.gnu.org/manual/en/html_node/G_002dExpressions.html][g-expressions]] is important for writing
-~g-hooks~.
+~g-hooks~ and the section on [[https://guix.gnu.org/en/manual/devel/en/html_node/Service-Composition.html][services]] is useful for understanding how hooks are
+composed.
 
 [[https://git-scm.com/docs/githooks][Git hooks documentation]] is important for understanding which hooks exist and
-how they are called.
+how they are invoked.
 
 [[https://pre-commit.com/][pre-commit]] is a similar tool that is (currently) more mature and has an
 existing ecosystem.
