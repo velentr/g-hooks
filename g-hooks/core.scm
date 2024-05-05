@@ -10,13 +10,15 @@
   #:use-module (guix derivations)
   #:use-module (guix monads)
   #:use-module (guix profiles)
+  #:use-module (guix scripts)
   #:use-module (guix scripts package)
   #:use-module (guix store)
   #:use-module (guix ui)
-  #:use-module (ice-9 getopt-long)
   #:use-module (ice-9 match)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
+  #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-37)
   #:export (g-hooks
             g-hooks-main))
 
@@ -200,10 +202,6 @@ directory."
         (switch-to-generation* (force %g-hooks-profile) number)
         (error "cannot switch to generation:" generation-spec))))
 
-(define %main-options
-  '((version (single-char #\v) (value #f))
-    (help    (single-char #\h) (value #f))))
-
 (define %main-usage
   "\
 usage: g-hooks [-h | --help] [-v | --version] <command> [<args>]
@@ -221,27 +219,34 @@ the valid values for COMMAND are listed below:
   delete-generations  delete old g-hooks generations
 ")
 
+(define %main-options
+  (list
+   (option '(#\h "help") #f #f
+           (lambda _
+             (display %main-usage)
+             (exit 0)))
+   (option '(#\v "version") #f #f
+           (lambda _
+             (display "g-hooks version 0.6.0")
+             (newline)
+             (exit 0)))))
+
 (define %main-commands
   `(("reconfigure" . ,reconfigure)
     ("list-generations" . ,list-generations)
     ("delete-generations" . ,delete-generations)
     ("switch-generation" . ,switch-generation)))
 
+(define (parse-sub-command arg result)
+  "Parse ARG as a sub-command, adding it to RESULT."
+  (let ((command-processor (assoc-ref %main-commands arg)))
+    (if command-processor
+        (alist-cons 'action command-processor result)
+        (error "unrecognized command:" arg))))
+
 (define (g-hooks-main args)
-  (let ((options (getopt-long
-                  (cons "g-hooks" args)
-                  %main-options
-                  #:stop-at-first-non-option #t)))
-    (cond
-     ((option-ref options 'help #f)
-      (display %main-usage))
-     ((option-ref options 'version #f)
-      (display "g-hooks version 0.6.0")
-      (newline))
-     ((not (null? (option-ref options '() '())))
-      (let* ((arguments (option-ref options '() '()))
-             (command (car arguments))
-             (command-processor (assoc-ref %main-commands command)))
-        (if command-processor
-            (command-processor arguments)
-            (error "unrecognized command:" command)))))))
+  (let* ((opts (parse-command-line args %main-options '(())
+                                   #:argument-handler parse-sub-command))
+         (action (assoc-ref opts 'action)))
+    (when action
+      (action opts))))
