@@ -113,8 +113,6 @@ directory."
 
 (define (reconfigure args)
   "Reconfigure .git/hooks/ based on the repository's g-hooks."
-  (unless (null? (cdr args))
-    (error "unrecognized arguments:" (string-join args)))
   (let ((g-hooks (load-config)))
     (run-with-store (open-connection)
       (mlet* %store-monad
@@ -179,22 +177,18 @@ directory."
 
 (define (delete-generations args)
   "Delete all generations other than the current generation."
-  (unless (null? (cdr args))
-    (error "unrecognized arguments:" (string-join args)))
   (with-store store
     (delete-matching-generations store (force %g-hooks-profile) #f)))
 
 (define (list-generations args)
   "Display all g-hooks generations in a human-readable format."
-  (unless (null? (cdr args))
-    (error "unrecognized arguments:" (string-join args)))
   (for-each print-generation (profile-generations (force %g-hooks-profile))))
 
 (define (switch-generation args)
   "Switch the g-hooks profile to the generation specified in ARGS."
-  (unless (= (length args) 2)
+  (unless (assoc-ref args 'argument)
     (error "switch-generation takes exactly one argument"))
-  (let* ((generation-spec (cadr args))
+  (let* ((generation-spec (assoc-ref args 'argument))
          (number (relative-generation-spec->number
                   (force %g-hooks-profile)
                   generation-spec)))
@@ -239,10 +233,13 @@ the valid values for COMMAND are listed below:
 
 (define (parse-sub-command arg result)
   "Parse ARG as a sub-command, adding it to RESULT."
-  (let ((command-processor (assoc-ref %main-commands arg)))
-    (if command-processor
-        (alist-cons 'action command-processor result)
-        (error "unrecognized command:" arg))))
+  (if (assoc-ref result 'action)
+      ;; we've already got an action, this is an argument
+      (alist-cons 'argument arg result)
+      (let ((command-processor (assoc-ref %main-commands arg)))
+        (if command-processor
+            (alist-cons 'action command-processor result)
+            (error "unrecognized command:" arg)))))
 
 (define (g-hooks-main args)
   (let* ((opts (parse-command-line args %main-options '(())
