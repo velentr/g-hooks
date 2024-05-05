@@ -11,6 +11,7 @@
   #:use-module (guix monads)
   #:use-module (guix profiles)
   #:use-module (guix scripts)
+  #:use-module (guix scripts build)
   #:use-module (guix scripts package)
   #:use-module (guix store)
   #:use-module (guix ui)
@@ -114,33 +115,41 @@ directory."
 (define (reconfigure args)
   "Reconfigure .git/hooks/ based on the repository's g-hooks."
   (let ((g-hooks (load-config)))
-    (run-with-store (open-connection)
-      (mlet* %store-monad
-          ((g-hooks-drv (g-hooks->git-hook-derivation g-hooks))
-           (_ (built-derivations (list g-hooks-drv)))
-           (g-hooks-out-path -> (derivation->output-path g-hooks-drv))
-           (number -> (+ 1 (generation-number (force %g-hooks-profile))))
-           (generation -> (generation-file-name
-                           (force %g-hooks-profile) number))
-           (hooks-dir -> (string-append (force %git-common-dir) "/hooks")))
-        (mkdir-p (force %g-hooks-root))
-        ;; make the generation pointing at the new g-hooks
-        (switch-symlinks generation g-hooks-out-path)
-        ;; point the profile at the latest generation
-        (switch-symlinks (force %g-hooks-profile) generation)
-        ;; remove the existing hooks/ directory (if it exists); this shouldn't
-        ;; remove the symlink
-        (delete-file-recursively hooks-dir)
-        ;; finally point the .git/hooks/ directory at the profile
-        (switch-symlinks hooks-dir (string-append (force %g-hooks-profile)
-                                                  "/hooks"))
-        ;; make an indirect garbage collection root pointing at the new
-        ;; generation to avoid removing the hooks during gc passes; note that we
-        ;; point at the generation instead of the store path directly so if the
-        ;; git repo is removed, the hooks can be garbage collected
-        (mbegin %store-monad
-          ((store-lift add-indirect-root) generation)
-          (return g-hooks-out-path))))))
+    (with-store store
+      (set-build-options-from-command-line store args)
+      (with-build-handler (build-notifier #:use-substitutes?
+                                          (assoc-ref args 'substitutes?)
+                                          #:verbosity
+                                          1
+                                          #:dry-run?
+                                          (assoc-ref args 'dry-run?))
+        (run-with-store store
+          (mlet* %store-monad
+              ((g-hooks-drv (g-hooks->git-hook-derivation g-hooks))
+               (_ (built-derivations (list g-hooks-drv)))
+               (g-hooks-out-path -> (derivation->output-path g-hooks-drv))
+               (number -> (+ 1 (generation-number (force %g-hooks-profile))))
+               (generation -> (generation-file-name
+                               (force %g-hooks-profile) number))
+               (hooks-dir -> (string-append (force %git-common-dir) "/hooks")))
+            (mkdir-p (force %g-hooks-root))
+            ;; make the generation pointing at the new g-hooks
+            (switch-symlinks generation g-hooks-out-path)
+            ;; point the profile at the latest generation
+            (switch-symlinks (force %g-hooks-profile) generation)
+            ;; remove the existing hooks/ directory (if it exists); this shouldn't
+            ;; remove the symlink
+            (delete-file-recursively hooks-dir)
+            ;; finally point the .git/hooks/ directory at the profile
+            (switch-symlinks hooks-dir (string-append (force %g-hooks-profile)
+                                                      "/hooks"))
+            ;; make an indirect garbage collection root pointing at the new
+            ;; generation to avoid removing the hooks during gc passes; note that we
+            ;; point at the generation instead of the store path directly so if the
+            ;; git repo is removed, the hooks can be garbage collected
+            (mbegin %store-monad
+              ((store-lift add-indirect-root) generation)
+              (return g-hooks-out-path))))))))
 
 (define (print-generation number)
   "Pretty-print generation NUMBER in a human-readable format."
@@ -202,28 +211,39 @@ usage: g-hooks [-h | --help] [-v | --version] <command> [<args>]
 
 run COMMAND with ARGS, if given
 
-  -h, --help          display this usage message and exit
-  -v, --version       display version information and exit
+  -h, --help             display this usage message and exit
+  -v, --version          display version information and exit
 
 the valid values for COMMAND are listed below:
 
-  reconfigure         switch to a new g-hooks configuration
-  list-generations    list all available g-hooks generations
-  switch-generation   switch to an existing g-hooks generation
-  delete-generations  delete old g-hooks generations
+  reconfigure            switch to a new g-hooks configuration
+  list-generations       list all available g-hooks generations
+  switch-generation      switch to an existing g-hooks generation
+  delete-generations     delete old g-hooks generations
+
+the valid ARGS are listed below:
 ")
 
 (define %main-options
-  (list
+  (cons*
    (option '(#\h "help") #f #f
            (lambda _
              (display %main-usage)
+             (show-build-options-help)
+             (newline)
              (exit 0)))
    (option '(#\v "version") #f #f
            (lambda _
              (display "g-hooks version 0.6.0")
              (newline)
-             (exit 0)))))
+             (exit 0)))
+   %standard-build-options))
+
+(define %default-options
+  `((graft? . #t)
+    (substitutes? . #t)
+    (offload? . #t)
+    (debug . 0)))
 
 (define %main-commands
   `(("reconfigure" . ,reconfigure)
@@ -242,7 +262,7 @@ the valid values for COMMAND are listed below:
             (error "unrecognized command:" arg)))))
 
 (define (g-hooks-main args)
-  (let* ((opts (parse-command-line args %main-options '(())
+  (let* ((opts (parse-command-line args %main-options (list %default-options)
                                    #:argument-handler parse-sub-command))
          (action (assoc-ref opts 'action)))
     (when action
