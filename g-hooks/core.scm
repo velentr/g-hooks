@@ -13,6 +13,7 @@
   #:use-module (guix scripts)
   #:use-module (guix scripts build)
   #:use-module (guix scripts package)
+  #:use-module (guix status)
   #:use-module (guix store)
   #:use-module (guix ui)
   #:use-module (ice-9 match)
@@ -115,41 +116,42 @@ directory."
 (define (reconfigure args)
   "Reconfigure .git/hooks/ based on the repository's g-hooks."
   (let ((g-hooks (load-config)))
-    (with-store store
-      (set-build-options-from-command-line store args)
-      (with-build-handler (build-notifier #:use-substitutes?
-                                          (assoc-ref args 'substitutes?)
-                                          #:verbosity
-                                          1
-                                          #:dry-run?
-                                          (assoc-ref args 'dry-run?))
-        (run-with-store store
-          (mlet* %store-monad
-              ((g-hooks-drv (g-hooks->git-hook-derivation g-hooks))
-               (_ (built-derivations (list g-hooks-drv)))
-               (g-hooks-out-path -> (derivation->output-path g-hooks-drv))
-               (number -> (+ 1 (generation-number (force %g-hooks-profile))))
-               (generation -> (generation-file-name
-                               (force %g-hooks-profile) number))
-               (hooks-dir -> (string-append (force %git-common-dir) "/hooks")))
-            (mkdir-p (force %g-hooks-root))
-            ;; make the generation pointing at the new g-hooks
-            (switch-symlinks generation g-hooks-out-path)
-            ;; point the profile at the latest generation
-            (switch-symlinks (force %g-hooks-profile) generation)
-            ;; remove the existing hooks/ directory (if it exists); this shouldn't
-            ;; remove the symlink
-            (delete-file-recursively hooks-dir)
-            ;; finally point the .git/hooks/ directory at the profile
-            (switch-symlinks hooks-dir (string-append (force %g-hooks-profile)
-                                                      "/hooks"))
-            ;; make an indirect garbage collection root pointing at the new
-            ;; generation to avoid removing the hooks during gc passes; note that we
-            ;; point at the generation instead of the store path directly so if the
-            ;; git repo is removed, the hooks can be garbage collected
-            (mbegin %store-monad
-              ((store-lift add-indirect-root) generation)
-              (return g-hooks-out-path))))))))
+    (with-status-verbosity (assoc-ref args 'verbosity)
+      (with-store store
+        (set-build-options-from-command-line store args)
+        (with-build-handler (build-notifier #:use-substitutes?
+                                            (assoc-ref args 'substitutes?)
+                                            #:verbosity
+                                            (assoc-ref args 'verbosity)
+                                            #:dry-run?
+                                            (assoc-ref args 'dry-run?))
+          (run-with-store store
+            (mlet* %store-monad
+                ((g-hooks-drv (g-hooks->git-hook-derivation g-hooks))
+                 (_ (built-derivations (list g-hooks-drv)))
+                 (g-hooks-out-path -> (derivation->output-path g-hooks-drv))
+                 (number -> (+ 1 (generation-number (force %g-hooks-profile))))
+                 (generation -> (generation-file-name
+                                 (force %g-hooks-profile) number))
+                 (hooks-dir -> (string-append (force %git-common-dir) "/hooks")))
+              (mkdir-p (force %g-hooks-root))
+              ;; make the generation pointing at the new g-hooks
+              (switch-symlinks generation g-hooks-out-path)
+              ;; point the profile at the latest generation
+              (switch-symlinks (force %g-hooks-profile) generation)
+              ;; remove the existing hooks/ directory (if it exists); this shouldn't
+              ;; remove the symlink
+              (delete-file-recursively hooks-dir)
+              ;; finally point the .git/hooks/ directory at the profile
+              (switch-symlinks hooks-dir (string-append (force %g-hooks-profile)
+                                                        "/hooks"))
+              ;; make an indirect garbage collection root pointing at the new
+              ;; generation to avoid removing the hooks during gc passes; note that we
+              ;; point at the generation instead of the store path directly so if the
+              ;; git repo is removed, the hooks can be garbage collected
+              (mbegin %store-monad
+                ((store-lift add-indirect-root) generation)
+                (return g-hooks-out-path)))))))))
 
 (define (print-generation number)
   "Pretty-print generation NUMBER in a human-readable format."
@@ -243,7 +245,11 @@ the valid ARGS are listed below:
   `((graft? . #t)
     (substitutes? . #t)
     (offload? . #t)
-    (debug . 0)))
+    (debug . 0)
+    (verbosity . 1)
+    (print-build-trace? . #t)
+    (print-extended-build-trace? . #t)
+    (multiplexed-build-output? . #t)))
 
 (define %main-commands
   `(("reconfigure" . ,reconfigure)
