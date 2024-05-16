@@ -236,7 +236,7 @@ the valid ARGS are listed below:
              (exit 0)))
    (option '(#\v "version") #f #f
            (lambda _
-             (display "g-hooks version 0.6.0")
+             (display "g-hooks version 0.7.0")
              (newline)
              (exit 0)))
    %standard-build-options))
