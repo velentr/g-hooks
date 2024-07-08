@@ -145,16 +145,17 @@ directory."
 (define (reconfigure args)
   "Reconfigure .git/hooks/ based on the repository's g-hooks."
   (let ((g-hooks (load-config)))
-    (with-status-verbosity (assoc-ref args 'verbosity)
-      (with-store store
-        (set-build-options-from-command-line store args)
-        (with-build-handler (build-notifier #:use-substitutes?
-                                            (assoc-ref args 'substitutes?)
-                                            #:verbosity
-                                            (assoc-ref args 'verbosity)
-                                            #:dry-run?
-                                            (assoc-ref args 'dry-run?))
-          (run-reconfigure-with-store store g-hooks))))))
+    (parameterize ((%graft? (assoc-ref args 'graft?)))
+      (with-status-verbosity (assoc-ref args 'verbosity)
+        (with-store store
+          (set-build-options-from-command-line store args)
+          (with-build-handler (build-notifier #:use-substitutes?
+                                              (assoc-ref args 'substitutes?)
+                                              #:verbosity
+                                              (assoc-ref args 'verbosity)
+                                              #:dry-run?
+                                              (assoc-ref args 'dry-run?))
+            (run-reconfigure-with-store store g-hooks)))))))
 
 (define (print-generation number)
   "Pretty-print generation NUMBER in a human-readable format."
