@@ -72,7 +72,7 @@ list of lines. If the program exits abnormally, the result is #f."
     (let ((output-rev (read-output '()))
           (status (close-pipe port)))
       (if (and (status:exit-val status)
-               (= 0 (status:exit-val status)))
+               (zero? (status:exit-val status)))
           (reverse output-rev)
           #f))))
 
