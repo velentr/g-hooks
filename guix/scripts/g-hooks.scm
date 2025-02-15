@@ -2,7 +2,7 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
-(define-module (guix extensions g-hooks)
+(define-module (guix scripts g-hooks)
   #:use-module (g-hooks core)
   #:use-module (guix scripts)
   #:export (guix-g-hooks))
