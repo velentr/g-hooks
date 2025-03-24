@@ -1,0 +1,8 @@
+;;; SPDX-FileCopyrightText: 2024 Brian Kubisiak <brian@kubisiak.com>
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-only
+
+(authorizations
+ (version 0)
+ (("B10E 190D D459 A6FA 6CE2  DF99 D07C FD67 16F3 7692"
+   (name "bkubisiak"))))
