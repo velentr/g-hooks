@@ -9,6 +9,8 @@
   #:use-module (guix packages)
   #:use-module (guix sets)
   #:use-module (guix utils)
+  #:use-module (ice-9 hash-table)
+  #:use-module (srfi srfi-26)
   #:export (hooks
             bash-script
             bash-script*
@@ -66,7 +68,10 @@ will exit on failure but not on success so it may be composed with other hooks."
 (define (unique lst)
   "Return a list of all the unique elements of LST, compared using EQUAL?. The
 ordering of the elements in the returned list may be different than in LST."
-  (set->list (list->set lst)))
+  (hash-map->list
+   (lambda (key _) key)
+   (alist->hash-table
+    (map (cut cons <> #t) lst))))
 
 (define (propagated-inputs-closure packages)
   "Get the list of the transitive closure of all propagated inputs of the list of
