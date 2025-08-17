@@ -85,7 +85,11 @@ argument."
                                       (assoc-ref args 'dry-run?))
                    (run-action-with-store store workflow-name workflow)))))))
       (chdir olddir)
-      (delete-file-recursively workdir)
+      (if (assoc-ref args 'skip-cleanup?)
+          (begin
+            (display workdir)
+            (newline))
+          (delete-file-recursively workdir))
       (unless success
         (error "workflow failed")))))
 
@@ -112,16 +116,23 @@ the valid values for COMMAND are listed below:
   whereis                determine the persistent path to the given repository
 
 the valid ARGS are listed below:
-")
+
+  -S, --skip-cleanup     skip cleaning up the working directory after running")
 
 (define %main-options
-  (cons
+  (cons*
    (option '(#\h "help") #f #f
            (lambda _
              (display %main-usage)
              (show-build-options-help)
              (newline)
              (exit 0)))
+   (option '(#\S "skip-cleanup") #f #f
+           (lambda (opt name arg result . rest)
+             (apply values
+                    (alist-cons 'skip-cleanup? #t
+                                (alist-delete 'skip-cleanup? result eq?))
+                    rest)))
    %standard-build-options))
 
 (define %default-options
