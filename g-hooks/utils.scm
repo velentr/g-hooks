@@ -17,6 +17,7 @@
             for-each-staged-file
             program
             program*
+            program-path
             python-script
             python-script*))
 

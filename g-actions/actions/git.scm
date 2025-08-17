@@ -39,19 +39,38 @@ checked out."
      refspec)))
 
 (define (fetch-refspec repo refspec)
+  "Fetch from the remote REPO to get a local copy of REFSPEC."
+  (git*
+   "-C"
+   #$(repository->path repo)
+   "fetch"
+   "origin"
+   #$(refspec->ref refspec)))
+
+(define (maybe-fetch-refspec repo refspec)
+  "Fetch from the remote REPO to get a local copy of REFSPEC if it does not
+already exist or the latest ref was requested."
   (list
    (clone repo)
-   (git*
-    "-C"
-    #$(repository->path repo)
-    "fetch"
-    "origin"
-    #$(refspec->ref refspec))))
+   (match refspec
+     (('latest branch)
+      (fetch-refspec repo refspec))
+     (_
+      #~(unless
+            (zero? (status:exit-val
+                    (system* #$(program-path git "/bin/git")
+                             "-C" #$(repository->path repo)
+                             "rev-parse"
+                             "--verify"
+                             "--quiet"
+                             "--end-of-options"
+                             #$refspec)))
+          #$(fetch-refspec repo refspec))))))
 
 (define* (checkout* #:key repository ref path)
   "Checkout REPOSITORY to REF at the given PATH."
   (list
-   (fetch-refspec repository ref)
+   (maybe-fetch-refspec repository ref)
    (git*
     "-C"
     #$(repository->path repository)
