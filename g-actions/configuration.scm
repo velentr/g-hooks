@@ -9,8 +9,7 @@
   #:use-module (srfi srfi-9 gnu)
   #:use-module (gcrypt base64)
   #:use-module (gcrypt hash)
-  #:export (eval-configuration-in-sandbox
-            repository*
+  #:export (repository*
             repository?
             repository->path
             repository->url))
@@ -43,16 +42,3 @@
 (define (repository->path repo)
   "Get the unique absolute path for REPO."
   (xdg-data-home "g-actions" "git-repos" (repository->key repo)))
-
-(define (eval-configuration-in-sandbox config-exp)
-  "Evaluate CONFIG-EXP in a sandbox including the constructors from this
-module."
-  (eval-in-sandbox
-   config-exp
-   #:bindings
-   (cons*
-    '((g-actions configuration)
-      repository*)
-    '((g-actions actions git)
-      checkout*)
-    all-pure-bindings)))

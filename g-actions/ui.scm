@@ -31,12 +31,13 @@ BINDING in a sandbox."
                      (reverse so-far)
                      (accumulate-sexps (cons maybe-sexp so-far)))))
              (accumulate-sexps '())))))
-    (eval-configuration-in-sandbox
+    (eval
      (cons
       'begin
       (append
        config-sexp
-       (list binding))))))
+       (list binding)))
+     (interaction-environment))))
 
 (define (variable-from-configuration args)
   "Load the variable defined in the configuration file and named as the command
