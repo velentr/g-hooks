@@ -67,8 +67,9 @@ already exist or the latest ref was requested."
                              #$refspec)))
           #$(fetch-refspec repo refspec))))))
 
-(define* (checkout* #:key repository ref path)
-  "Checkout REPOSITORY to REF at the given PATH."
+(define* (checkout* #:key repository ref path sparse)
+  "Checkout REPOSITORY to REF at the given PATH, using a sparse-checkout for
+SPARSE paths if provided."
   (list
    (maybe-fetch-refspec repository ref)
    (git*
@@ -77,5 +78,28 @@ already exist or the latest ref was requested."
     "worktree"
     "add"
     "--detach"
+    "--no-checkout"
     (string-join (list (getcwd) #$path) "/")
-    #$(refspec->ref ref))))
+    #$(refspec->ref ref))
+   (if (nil? sparse)
+       '()
+       (list
+        (git*
+         "-C"
+         (string-join (list (getcwd) #$path) "/")
+         "sparse-checkout"
+         "init")
+        (map
+         (lambda (sparse-path)
+           (git*
+            "-C"
+            (string-join (list (getcwd) #$path) "/")
+            "sparse-checkout"
+            "add"
+            #$sparse-path))
+         sparse)))
+   (git*
+    "-C"
+    (string-join (list (getcwd) #$path) "/")
+    "checkout"
+    "HEAD")))
