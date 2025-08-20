@@ -10,7 +10,8 @@
   #:use-module (gnu packages version-control)
   #:use-module (guix gexp)
   #:export (clone
-            checkout*))
+            checkout*
+            git*))
 
 ;;; Commentary:
 ;;;
